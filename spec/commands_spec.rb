@@ -19,6 +19,17 @@ describe 'commands' do
         .to(match(/6.7.2/))
   end
 
+  ['bash', 'curl', 'dumb-init'].each do |apk|
+    it "includes #{apk}" do
+      expect(package(apk)).to be_installed
+    end
+  end
+
+  it "includes the AWS CLI" do
+    expect(command('aws --version').stderr)
+        .to(match(/1.18.188/))
+  end
+
   def reset_docker_backend
     Specinfra::Backend::Docker.instance.send :cleanup_container
     Specinfra::Backend::Docker.clear
