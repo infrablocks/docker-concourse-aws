@@ -1,7 +1,8 @@
 Docker Image - Concourse AWS
 ============================
 
-## Development
+Development
+-----------
 
 ### Managing CircleCI keys
 
