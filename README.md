@@ -1,4 +1,5 @@
-# Docker Image - Concourse AWS
+Docker Image - Concourse AWS
+============================
 
 ## Development
 
