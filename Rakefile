@@ -93,6 +93,7 @@ namespace :images do
 
       t.copy_spec = [
           "src/concourse-aws/Dockerfile",
+          "src/concourse-aws/docker-entrypoint.sh",
           "src/concourse-aws/start.sh",
       ]
 
@@ -210,6 +211,15 @@ namespace :dependencies do
       }, "docker-compose #{command_switches} down")
     end
   end
+end
+
+namespace :fixtures do
+  RakeSSH.define_key_tasks(
+      namespace: :tsa_host_key,
+      path: 'spec/fixtures/',
+      name_prefix: 'tsa_host_key',
+      comment: 'maintainers@infrablocks.io'
+  )
 end
 
 namespace :test do
