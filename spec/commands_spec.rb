@@ -15,7 +15,7 @@ describe 'commands' do
   after(:all, &:reset_docker_backend)
 
   it "includes the concourse command" do
-    expect(command('/usr/local/concourse/bin/concourse --version').stdout)
+    expect(command('/opt/concourse/bin/concourse --version').stdout)
         .to(match(/6.7.2/))
   end
 

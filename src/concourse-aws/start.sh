@@ -4,4 +4,4 @@
 set -e
 
 echo "Running concourse."
-exec /usr/local/concourse/bin/concourse "$@"
+exec /opt/concourse/bin/concourse "$@"

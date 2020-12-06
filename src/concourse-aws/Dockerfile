@@ -1,4 +1,24 @@
-FROM concourse/concourse:6.7.2
+FROM concourse/concourse:6.7.2 as concourse
+
+FROM ubuntu:bionic
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    btrfs-tools \
+    ca-certificates \
+    dumb-init \
+    iproute2 \
+    file \
+    iptables
+
+# Fetch binaries from base image
+COPY --from=concourse /usr/local/concourse /opt/concourse
+
+# Use similar configuration to base image
+ENV CONCOURSE_GARDEN_DNS_PROXY_ENABLE=true
+ENV CONCOURSE_WORKER_GARDEN_DNS_PROXY_ENABLE=true
+
+STOPSIGNAL SIGUSR2
 
 # Install AWS CLI
 RUN apt-get update \
@@ -10,12 +30,13 @@ RUN apt-get update \
     && rm awscli-bundle.zip \
     && rm -rf awscli-bundle
 
+# Configure entrypoints
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY start.sh /usr/local/concourse/bin/start.sh
+COPY start.sh /opt/concourse/bin/start.sh
 
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/concourse/bin/start.sh
+RUN chmod +x /opt/concourse/bin/start.sh
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
-ENV STARTUP_SCRIPT_PATH=/usr/local/concourse/bin/start.sh
+ENV STARTUP_SCRIPT_PATH=/opt/concourse/bin/start.sh

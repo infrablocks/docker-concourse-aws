@@ -43,7 +43,8 @@ describe 'concourse-worker-aws entrypoint' do
           bucket_path: s3_bucket_path,
           object_path: s3_env_file_object_path,
           env: {
-              'CONCOURSE_TSA_WORKER_PRIVATE_KEY' => '/worker_key'
+              'CONCOURSE_TSA_WORKER_PRIVATE_KEY' => '/worker_key',
+              'CONCOURSE_WORK_DIR' => '/var/opt/concourse'
           })
 
       execute_command(
