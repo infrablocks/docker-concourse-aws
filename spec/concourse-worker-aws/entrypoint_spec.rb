@@ -33,7 +33,7 @@ describe 'concourse-worker-aws entrypoint' do
 
   describe 'by default' do
     def worker_key
-      File.read('spec/fixtures/worker_key.private')
+      File.read('spec/fixtures/worker-key.private')
     end
 
     before(:all) do
@@ -43,15 +43,14 @@ describe 'concourse-worker-aws entrypoint' do
           bucket_path: s3_bucket_path,
           object_path: s3_env_file_object_path,
           env: {
-              'CONCOURSE_TSA_WORKER_PRIVATE_KEY' => '/worker_key',
+              'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_PATH' => '/worker-key',
               'CONCOURSE_WORK_DIR' => '/var/opt/concourse'
           })
 
       execute_command(
-          "echo \"#{worker_key}\" > /worker_key")
+          "echo \"#{worker_key}\" > /worker-key")
 
       execute_docker_entrypoint(
-          arguments: [],
           started_indicator: "guardian.started")
     end
 
@@ -116,13 +115,13 @@ describe 'concourse-worker-aws entrypoint' do
 
   def execute_docker_entrypoint(opts)
     logfile_path = '/tmp/docker-entrypoint.log'
-    args = opts[:arguments].join(' ')
+    args = (opts[:arguments] || []).join(' ')
 
     execute_command(
         "docker-entrypoint.sh #{args} > #{logfile_path} 2>&1 &")
 
     begin
-      Octopoller.poll(timeout: 5) do
+      Octopoller.poll(timeout: 10) do
         docker_entrypoint_log = command("cat #{logfile_path}").stdout
         docker_entrypoint_log =~ /#{opts[:started_indicator]}/ ?
             docker_entrypoint_log :

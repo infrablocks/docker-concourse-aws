@@ -32,7 +32,7 @@ describe 'concourse-aws entrypoint' do
 
   describe 'by default' do
     def tsa_host_key
-      File.read('spec/fixtures/tsa_host_key.private')
+      File.read('spec/fixtures/tsa-host-key.private')
     end
 
     before(:all) do
@@ -47,11 +47,11 @@ describe 'concourse-aws entrypoint' do
               'CONCOURSE_POSTGRES_PASSWORD' => 'concourse',
               'CONCOURSE_ADD_LOCAL_USER' => 'user:pass',
               'CONCOURSE_MAIN_TEAM_LOCAL_USER' => 'user',
-              'CONCOURSE_TSA_HOST_KEY' => '/tsa_host_key'
+              'CONCOURSE_TSA_HOST_KEY' => '/tsa-host-key'
           })
 
       execute_command(
-          "echo \"#{tsa_host_key}\" > /tsa_host_key")
+          "echo \"#{tsa_host_key}\" > /tsa-host-key")
 
       execute_docker_entrypoint(
           arguments: ["web"],
@@ -118,7 +118,7 @@ describe 'concourse-aws entrypoint' do
 
   def execute_docker_entrypoint(opts)
     logfile_path = '/tmp/docker-entrypoint.log'
-    args = opts[:arguments].join(' ')
+    args = (opts[:arguments] || []).join(' ')
 
     execute_command(
         "docker-entrypoint.sh #{args} > #{logfile_path} 2>&1 &")

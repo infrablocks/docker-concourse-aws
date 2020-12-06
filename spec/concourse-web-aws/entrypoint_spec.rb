@@ -23,6 +23,14 @@ describe 'concourse-web-aws entrypoint' do
       }
   }
 
+  default_env = {
+      'CONCOURSE_POSTGRES_HOST' => 'db',
+      'CONCOURSE_POSTGRES_USER' => 'concourse',
+      'CONCOURSE_POSTGRES_PASSWORD' => 'concourse',
+      'CONCOURSE_ADD_LOCAL_USER' => 'user:pass',
+      'CONCOURSE_MAIN_TEAM_LOCAL_USER' => 'user'
+  }
+
   before(:all) do
     set :backend, :docker
     set :env, environment
@@ -32,7 +40,7 @@ describe 'concourse-web-aws entrypoint' do
 
   describe 'by default' do
     def tsa_host_key
-      File.read('spec/fixtures/tsa_host_key.private')
+      File.read('spec/fixtures/tsa-host-key.private')
     end
 
     before(:all) do
@@ -41,20 +49,14 @@ describe 'concourse-web-aws entrypoint' do
           region: s3_bucket_region,
           bucket_path: s3_bucket_path,
           object_path: s3_env_file_object_path,
-          env: {
-              'CONCOURSE_POSTGRES_HOST' => 'db',
-              'CONCOURSE_POSTGRES_USER' => 'concourse',
-              'CONCOURSE_POSTGRES_PASSWORD' => 'concourse',
-              'CONCOURSE_ADD_LOCAL_USER' => 'user:pass',
-              'CONCOURSE_MAIN_TEAM_LOCAL_USER' => 'user',
-              'CONCOURSE_TSA_HOST_KEY' => '/tsa_host_key'
-          })
+          env: default_env.merge(
+              'CONCOURSE_TSA_HOST_KEY_FILE_PATH' => '/tsa-host-key'
+          ))
 
       execute_command(
-          "echo \"#{tsa_host_key}\" > /tsa_host_key")
+          "echo \"#{tsa_host_key}\" > /tsa-host-key")
 
       execute_docker_entrypoint(
-          arguments: [],
           started_indicator: "atc.listening")
     end
 
@@ -73,6 +75,101 @@ describe 'concourse-web-aws entrypoint' do
     it 'runs with the root group' do
       expect(process('concourse').group)
           .to(eq('root'))
+    end
+  end
+
+  describe 'with session signing key configuration' do
+    context 'when passed a filesystem path for the session signing key' do
+      before(:all) do
+        session_signing_key =
+            File.read('spec/fixtures/session-signing-key.private')
+        tsa_host_key =
+            File.read('spec/fixtures/tsa-host-key.private')
+
+        create_env_file(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: s3_env_file_object_path,
+            env: default_env.merge(
+                'CONCOURSE_TSA_HOST_KEY_FILE_PATH' => '/tsa-host-key',
+                'CONCOURSE_SESSION_SIGNING_KEY_FILE_PATH' => '/session-signing-key'
+            ))
+
+        execute_command(
+            "echo \"#{tsa_host_key}\" > /tsa-host-key")
+        execute_command(
+            "echo \"#{session_signing_key}\" > /session-signing-key")
+
+        execute_docker_entrypoint(
+            started_indicator: "atc.listening")
+      end
+
+      after(:all, &:reset_docker_backend)
+
+      it 'uses the provided file path as the session signing key' do
+        expect(process('concourse').args)
+            .to(match(
+                /--session-signing-key=\/session-signing-key/))
+      end
+    end
+
+    context 'when passed an object path for the session signing key' do
+      def session_signing_key
+        File.read('spec/fixtures/session-signing-key.private')
+      end
+
+      before(:all) do
+        session_signing_key_object_path = "#{s3_bucket_path}/session-signing-key"
+        tsa_host_key =
+            File.read('spec/fixtures/tsa-host-key.private')
+
+        create_object(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: session_signing_key_object_path,
+            content: session_signing_key)
+
+        create_env_file(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: s3_env_file_object_path,
+            env: default_env.merge(
+                'CONCOURSE_TSA_HOST_KEY_FILE_PATH' => '/tsa-host-key',
+                'CONCOURSE_SESSION_SIGNING_KEY_FILE_OBJECT_PATH' =>
+                    session_signing_key_object_path
+            ))
+
+        execute_command(
+            "echo \"#{tsa_host_key}\" > /tsa-host-key")
+
+        execute_docker_entrypoint(
+            started_indicator: "atc.listening")
+      end
+
+      after(:all, &:reset_docker_backend)
+
+      it 'fetches the specified session signing key' do
+        config_file_listing = command('ls /opt/concourse/conf').stdout
+
+        expect(config_file_listing)
+            .to(eq("session-signing-key\n"))
+
+        session_signing_key_path = '/opt/concourse/conf/session-signing-key'
+        session_signing_key_contents =
+            command("cat #{session_signing_key_path}").stdout
+
+        expect(session_signing_key_contents).to(eq(session_signing_key))
+      end
+
+      it 'uses the fetched session signing key' do
+        key_path = '/opt/concourse/conf/session-signing-key'
+        expect(process('concourse').args)
+            .to(match(
+                /--session-signing-key=#{Regexp.escape(key_path)}/))
+      end
     end
   end
 
@@ -119,13 +216,13 @@ describe 'concourse-web-aws entrypoint' do
 
   def execute_docker_entrypoint(opts)
     logfile_path = '/tmp/docker-entrypoint.log'
-    args = opts[:arguments].join(' ')
+    args = (opts[:arguments] || []).join(' ')
 
     execute_command(
         "docker-entrypoint.sh #{args} > #{logfile_path} 2>&1 &")
 
     begin
-      Octopoller.poll(timeout: 5) do
+      Octopoller.poll(timeout: 10) do
         docker_entrypoint_log = command("cat #{logfile_path}").stdout
         docker_entrypoint_log =~ /#{opts[:started_indicator]}/ ?
             docker_entrypoint_log :

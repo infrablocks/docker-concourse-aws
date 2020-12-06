@@ -215,16 +215,23 @@ end
 
 namespace :fixtures do
   RakeSSH.define_key_tasks(
+      namespace: :session_signing_key,
+      path: 'spec/fixtures/',
+      name_prefix: 'session-signing-key',
+      comment: 'maintainers@infrablocks.io'
+  )
+
+  RakeSSH.define_key_tasks(
       namespace: :tsa_host_key,
       path: 'spec/fixtures/',
-      name_prefix: 'tsa_host_key',
+      name_prefix: 'tsa-host-key',
       comment: 'maintainers@infrablocks.io'
   )
 
   RakeSSH.define_key_tasks(
       namespace: :worker_key,
       path: 'spec/fixtures/',
-      name_prefix: 'worker_key',
+      name_prefix: 'worker-key',
       comment: 'maintainers@infrablocks.io'
   )
 end

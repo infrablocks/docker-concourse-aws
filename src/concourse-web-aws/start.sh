@@ -3,6 +3,32 @@
 [ "$TRACE" = "yes" ] && set -x
 set -e
 
+session_signing_key_option=
+if [ -n "${CONCOURSE_SESSION_SIGNING_KEY_FILE_OBJECT_PATH}" ]; then
+  default_path=/opt/concourse/conf/session-signing-key
+  echo "Fetching session signing key."
+  fetch_file_from_s3 \
+    "${AWS_S3_BUCKET_REGION}" \
+    "${CONCOURSE_SESSION_SIGNING_KEY_FILE_OBJECT_PATH}" \
+    "${default_path}"
+  session_signing_key_option="--session-signing-key=${default_path}"
+fi
+if [ -n "${CONCOURSE_SESSION_SIGNING_KEY_FILE_PATH}" ]; then
+  file_path="${CONCOURSE_SESSION_SIGNING_KEY_FILE_PATH}"
+  session_signing_key_option="--session-signing-key=${file_path}"
+fi
+
+tsa_host_key_option=
+if [ -n "${CONCOURSE_TSA_HOST_KEY_FILE_PATH}" ]; then
+  file_path="${CONCOURSE_TSA_HOST_KEY_FILE_PATH}"
+  tsa_host_key_option="--tsa-host-key=${file_path}"
+fi
+
+# shellcheck disable=SC2086
 exec /opt/concourse/bin/start.sh web \
+    \
+    ${session_signing_key_option} \
+    \
+    ${tsa_host_key_option} \
     \
     "$@"
