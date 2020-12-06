@@ -167,8 +167,8 @@ namespace :images do
   task :build do
     [
         'images:base',
-        # 'images:web',
-        # 'images:worker',
+        'images:web',
+        'images:worker',
     ].each do |t|
       Rake::Task["#{t}:build"].invoke('latest')
       Rake::Task["#{t}:tag"].invoke('latest')
@@ -218,6 +218,13 @@ namespace :fixtures do
       namespace: :tsa_host_key,
       path: 'spec/fixtures/',
       name_prefix: 'tsa_host_key',
+      comment: 'maintainers@infrablocks.io'
+  )
+
+  RakeSSH.define_key_tasks(
+      namespace: :worker_key,
+      path: 'spec/fixtures/',
+      name_prefix: 'worker_key',
       comment: 'maintainers@infrablocks.io'
   )
 end

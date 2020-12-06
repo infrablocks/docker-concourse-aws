@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'concourse-aws entrypoint' do
+describe 'concourse-web-aws entrypoint' do
   metadata_service_url = 'http://metadata:1338'
   s3_endpoint_url = 'http://s3:4566'
   s3_bucket_region = 'us-east-1'
@@ -15,7 +15,7 @@ describe 'concourse-aws entrypoint' do
       'AWS_S3_BUCKET_REGION' => s3_bucket_region,
       'AWS_S3_ENV_FILE_OBJECT_PATH' => s3_env_file_object_path
   }
-  image = 'concourse-aws:latest'
+  image = 'concourse-web-aws:latest'
   extra = {
       'Entrypoint' => '/bin/sh',
       'HostConfig' => {
@@ -54,14 +54,15 @@ describe 'concourse-aws entrypoint' do
           "echo \"#{tsa_host_key}\" > /tsa_host_key")
 
       execute_docker_entrypoint(
-          arguments: ["web"],
+          arguments: [],
           started_indicator: "atc.listening")
     end
 
     after(:all, &:reset_docker_backend)
 
-    it 'runs concourse' do
+    it 'runs concourse web' do
       expect(process('concourse')).to(be_running)
+      expect(process('concourse').args).to(match(/web/))
     end
 
     it 'runs with the root user' do

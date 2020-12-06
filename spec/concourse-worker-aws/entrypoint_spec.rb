@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'concourse-aws entrypoint' do
+describe 'concourse-worker-aws entrypoint' do
   metadata_service_url = 'http://metadata:1338'
   s3_endpoint_url = 'http://s3:4566'
   s3_bucket_region = 'us-east-1'
@@ -15,10 +15,11 @@ describe 'concourse-aws entrypoint' do
       'AWS_S3_BUCKET_REGION' => s3_bucket_region,
       'AWS_S3_ENV_FILE_OBJECT_PATH' => s3_env_file_object_path
   }
-  image = 'concourse-aws:latest'
+  image = 'concourse-worker-aws:latest'
   extra = {
       'Entrypoint' => '/bin/sh',
       'HostConfig' => {
+          'Privileged' => true,
           'NetworkMode' => 'docker_concourse_aws_test_default'
       }
   }
@@ -31,8 +32,8 @@ describe 'concourse-aws entrypoint' do
   end
 
   describe 'by default' do
-    def tsa_host_key
-      File.read('spec/fixtures/tsa_host_key.private')
+    def worker_key
+      File.read('spec/fixtures/worker_key.private')
     end
 
     before(:all) do
@@ -42,26 +43,22 @@ describe 'concourse-aws entrypoint' do
           bucket_path: s3_bucket_path,
           object_path: s3_env_file_object_path,
           env: {
-              'CONCOURSE_POSTGRES_HOST' => 'db',
-              'CONCOURSE_POSTGRES_USER' => 'concourse',
-              'CONCOURSE_POSTGRES_PASSWORD' => 'concourse',
-              'CONCOURSE_ADD_LOCAL_USER' => 'user:pass',
-              'CONCOURSE_MAIN_TEAM_LOCAL_USER' => 'user',
-              'CONCOURSE_TSA_HOST_KEY' => '/tsa_host_key'
+              'CONCOURSE_TSA_WORKER_PRIVATE_KEY' => '/worker_key'
           })
 
       execute_command(
-          "echo \"#{tsa_host_key}\" > /tsa_host_key")
+          "echo \"#{worker_key}\" > /worker_key")
 
       execute_docker_entrypoint(
-          arguments: ["web"],
-          started_indicator: "atc.listening")
+          arguments: [],
+          started_indicator: "guardian.started")
     end
 
     after(:all, &:reset_docker_backend)
 
-    it 'runs concourse' do
+    it 'runs concourse worker' do
       expect(process('concourse')).to(be_running)
+      expect(process('concourse').args).to(match(/worker/))
     end
 
     it 'runs with the root user' do
