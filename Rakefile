@@ -229,7 +229,7 @@ namespace :fixtures do
   )
 
   RakeSSH.define_key_tasks(
-      namespace: :worker_key,
+      namespace: :tsa_worker_private_key,
       path: 'spec/fixtures/',
       name_prefix: 'worker-key',
       comment: 'maintainers@infrablocks.io'

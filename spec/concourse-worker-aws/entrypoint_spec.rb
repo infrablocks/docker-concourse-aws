@@ -24,6 +24,10 @@ describe 'concourse-worker-aws entrypoint' do
       }
   }
 
+  default_env = {
+      'CONCOURSE_WORK_DIR' => '/var/opt/concourse'
+  }
+
   before(:all) do
     set :backend, :docker
     set :env, environment
@@ -32,7 +36,7 @@ describe 'concourse-worker-aws entrypoint' do
   end
 
   describe 'by default' do
-    def worker_key
+    def tsa_worker_private_key
       File.read('spec/fixtures/worker-key.private')
     end
 
@@ -42,13 +46,13 @@ describe 'concourse-worker-aws entrypoint' do
           region: s3_bucket_region,
           bucket_path: s3_bucket_path,
           object_path: s3_env_file_object_path,
-          env: {
-              'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_PATH' => '/worker-key',
-              'CONCOURSE_WORK_DIR' => '/var/opt/concourse'
-          })
+          env: default_env.merge(
+              'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_PATH' =>
+                  '/tsa-worker-private-key',
+          ))
 
       execute_command(
-          "echo \"#{worker_key}\" > /worker-key")
+          "echo \"#{tsa_worker_private_key}\" > /tsa-worker-private-key")
 
       execute_docker_entrypoint(
           started_indicator: "guardian.started")
@@ -69,6 +73,137 @@ describe 'concourse-worker-aws entrypoint' do
     it 'runs with the root group' do
       expect(process('concourse').group)
           .to(eq('root'))
+    end
+  end
+
+  describe 'with TSA configuration' do
+    context 'when passed filesystem paths for the public key and worker ' +
+        'private key' do
+      before(:all) do
+        tsa_public_key =
+            File.read('spec/fixtures/tsa-host-key.public')
+        tsa_worker_private_key =
+            File.read('spec/fixtures/worker-key.private')
+
+        create_env_file(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: s3_env_file_object_path,
+            env: default_env.merge(
+                'CONCOURSE_TSA_PUBLIC_KEY_FILE_PATH' =>
+                    '/tsa-public-key',
+                'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_PATH' =>
+                    '/tsa-worker-private-key'
+            ))
+
+        execute_command(
+            "echo \"#{tsa_public_key}\" > /tsa-public-key")
+        execute_command(
+            "echo \"#{tsa_worker_private_key}\" > /tsa-worker-private-key")
+
+        execute_docker_entrypoint(
+            started_indicator: "guardian.started")
+      end
+
+      after(:all, &:reset_docker_backend)
+
+      it 'uses the provided file path as the TSA public key' do
+        expect(process('concourse').args)
+            .to(match(
+                /--tsa-public-key=\/tsa-public-key/))
+      end
+
+      it 'uses the provided file path as the TSA worker private key' do
+        expect(process('concourse').args)
+            .to(match(
+                /--tsa-worker-private-key=\/tsa-worker-private-key/))
+      end
+    end
+
+    context 'when passed object paths for the public key and worker ' +
+        'private key' do
+      def tsa_public_key
+        File.read('spec/fixtures/tsa-host-key.public')
+      end
+
+      def tsa_worker_private_key
+        File.read('spec/fixtures/worker-key.private')
+      end
+
+      before(:all) do
+        tsa_public_key_object_path =
+            "#{s3_bucket_path}/tsa-public-key"
+        tsa_worker_private_key_object_path =
+            "#{s3_bucket_path}/tsa-worker-private-key"
+
+        create_object(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: tsa_public_key_object_path,
+            content: tsa_public_key)
+
+        create_object(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: tsa_worker_private_key_object_path,
+            content: tsa_worker_private_key)
+
+        create_env_file(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: s3_env_file_object_path,
+            env: default_env.merge(
+                'CONCOURSE_TSA_PUBLIC_KEY_FILE_OBJECT_PATH' =>
+                    tsa_public_key_object_path,
+                'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_OBJECT_PATH' =>
+                    tsa_worker_private_key_object_path
+            ))
+
+        execute_docker_entrypoint(
+            started_indicator: "guardian.started")
+      end
+
+      after(:all, &:reset_docker_backend)
+
+      it 'fetches the specified TSA public key and TSA worker private key' do
+        config_file_listing = command('ls /opt/concourse/conf').stdout
+
+        expect(config_file_listing)
+            .to(eq([
+                "tsa-public-key",
+                "tsa-worker-private-key",
+            ].join("\n") + "\n"))
+
+        tsa_public_key_path = '/opt/concourse/conf/tsa-public-key'
+        tsa_public_key_contents =
+            command("cat #{tsa_public_key_path}").stdout
+
+        tsa_worker_private_key_path =
+            '/opt/concourse/conf/tsa-worker-private-key'
+        tsa_worker_private_key_contents =
+            command("cat #{tsa_worker_private_key_path}").stdout
+
+        expect(tsa_public_key_contents).to(eq(tsa_public_key))
+        expect(tsa_worker_private_key_contents).to(eq(tsa_worker_private_key))
+      end
+
+      it 'uses the fetched TSA public key' do
+        key_path = '/opt/concourse/conf/tsa-public-key'
+        expect(process('concourse').args)
+            .to(match(
+                /--tsa-public-key=#{Regexp.escape(key_path)}/))
+      end
+
+      it 'uses the fetched TSA worker private key' do
+        key_path = '/opt/concourse/conf/tsa-worker-private-key'
+        expect(process('concourse').args)
+            .to(match(
+                /--tsa-worker-private-key=#{Regexp.escape(key_path)}/))
+      end
     end
   end
 

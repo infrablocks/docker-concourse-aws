@@ -50,7 +50,7 @@ describe 'concourse-web-aws entrypoint' do
           bucket_path: s3_bucket_path,
           object_path: s3_env_file_object_path,
           env: default_env.merge(
-              'CONCOURSE_TSA_HOST_KEY' => '/tsa-host-key'
+              'CONCOURSE_TSA_HOST_KEY_FILE_PATH' => '/tsa-host-key'
           ))
 
       execute_command(
