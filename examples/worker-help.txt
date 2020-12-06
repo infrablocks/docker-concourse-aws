@@ -1,0 +1,81 @@
+Usage:
+  concourse [OPTIONS] worker [worker-OPTIONS]
+
+Application Options:
+  -v, --version                                              Print the version of Concourse and exit [$CONCOURSE_VERSION]
+
+Help Options:
+  -h, --help                                                 Show this help message
+
+[worker command options]
+          --name=                                            The name to set for the worker during registration. If not specified, the hostname will be used. [$CONCOURSE_NAME]
+          --tag=                                             A tag to set during registration. Can be specified multiple times. [$CONCOURSE_TAG]
+          --team=                                            The name of the team that this worker will be assigned to. [$CONCOURSE_TEAM]
+          --http-proxy=                                      HTTP proxy endpoint to use for containers. [$http_proxy]
+          --https-proxy=                                     HTTPS proxy endpoint to use for containers. [$https_proxy]
+          --no-proxy=                                        Blacklist of addresses to skip the proxy when reaching. [$no_proxy]
+          --ephemeral                                        If set, the worker will be immediately removed upon stalling. [$CONCOURSE_EPHEMERAL]
+          --certs-dir=                                       Directory to use when creating the resource certificates volume. [$CONCOURSE_CERTS_DIR]
+          --work-dir=                                        Directory in which to place container data. [$CONCOURSE_WORK_DIR]
+          --bind-ip=                                         IP address on which to listen for the Garden server. (default: 127.0.0.1) [$CONCOURSE_BIND_IP]
+          --bind-port=                                       Port on which to listen for the Garden server. (default: 7777) [$CONCOURSE_BIND_PORT]
+          --debug-bind-ip=                                   IP address on which to listen for the pprof debugger endpoints. (default: 127.0.0.1) [$CONCOURSE_DEBUG_BIND_IP]
+          --debug-bind-port=                                 Port on which to listen for the pprof debugger endpoints. (default: 7776) [$CONCOURSE_DEBUG_BIND_PORT]
+          --healthcheck-bind-ip=                             IP address on which to listen for health checking requests. (default: 0.0.0.0) [$CONCOURSE_HEALTHCHECK_BIND_IP]
+          --healthcheck-bind-port=                           Port on which to listen for health checking requests. (default: 8888) [$CONCOURSE_HEALTHCHECK_BIND_PORT]
+          --healthcheck-timeout=                             HTTP timeout for the full duration of health checking. (default: 5s) [$CONCOURSE_HEALTHCHECK_TIMEOUT]
+          --sweep-interval=                                  Interval on which containers and volumes will be garbage collected from the worker. (default: 30s) [$CONCOURSE_SWEEP_INTERVAL]
+          --volume-sweeper-max-in-flight=                    Maximum number of volumes which can be swept in parallel. (default: 3) [$CONCOURSE_VOLUME_SWEEPER_MAX_IN_FLIGHT]
+          --container-sweeper-max-in-flight=                 Maximum number of containers which can be swept in parallel. (default: 5) [$CONCOURSE_CONTAINER_SWEEPER_MAX_IN_FLIGHT]
+          --rebalance-interval=                              Duration after which the registration should be swapped to another random SSH gateway. (default: 4h) [$CONCOURSE_REBALANCE_INTERVAL]
+          --connection-drain-timeout=                        Duration after which a worker should give up draining forwarded connections on shutdown. (default: 1h) [$CONCOURSE_CONNECTION_DRAIN_TIMEOUT]
+          --external-garden-url=                             API endpoint of an externally managed Garden server to use instead of running the embedded Garden server. [$CONCOURSE_EXTERNAL_GARDEN_URL]
+          --resource-types=                                  Path to directory containing resource types the worker should advertise. [$CONCOURSE_RESOURCE_TYPES]
+          --log-level=[debug|info|error|fatal]               Minimum level of logs to see. (default: info) [$CONCOURSE_LOG_LEVEL]
+
+    TSA Configuration:
+          --tsa-host=                                        TSA host to forward the worker through. Can be specified multiple times. (default: 127.0.0.1:2222) [$CONCOURSE_TSA_HOST]
+          --tsa-public-key=                                  File containing a public key to expect from the TSA. [$CONCOURSE_TSA_PUBLIC_KEY]
+          --tsa-worker-private-key=                          File containing the private key to use when authenticating to the TSA. [$CONCOURSE_TSA_WORKER_PRIVATE_KEY]
+
+    Runtime Configuration:
+          --runtime=[guardian|containerd|houdini]            Runtime to use with the worker. Please note that Houdini is insecure and doesn't run 'tasks' in containers. (default: guardian) [$CONCOURSE_RUNTIME]
+
+    Guardian Configuration:
+          --garden-bin=                                      Path to a garden server executable (non-absolute names get resolved from $PATH). [$CONCOURSE_GARDEN_BIN]
+          --garden-request-timeout=                          How long to wait for requests to the Garden server to complete. 0 means no timeout. (default: 5m) [$CONCOURSE_GARDEN_REQUEST_TIMEOUT]
+          --garden-config=                                   Path to a config file to use for the Garden backend. e.g. 'foo-bar=a,b' for '--foo-bar a --foo-bar b'. [$CONCOURSE_GARDEN_CONFIG]
+
+    DNS Proxy Configuration:
+          --garden-dns-proxy-enable                          Enable proxy DNS server. [$CONCOURSE_GARDEN_DNS_PROXY_ENABLE]
+
+    Container Networking:
+          --garden-network-pool=                             Network range to use for dynamically allocated container subnets. (default:10.80.0.0/16) [$CONCOURSE_GARDEN_NETWORK_POOL]
+
+    Limits:
+          --garden-max-containers=                           Maximum container capacity. 0 means no limit. (default:250) [$CONCOURSE_GARDEN_MAX_CONTAINERS]
+
+    Containerd Configuration:
+          --containerd-config=                               Path to a config file to use for the Containerd daemon. [$CONCOURSE_CONTAINERD_CONFIG]
+          --containerd-bin=                                  Path to a containerd executable (non-absolute names get resolved from $PATH). [$CONCOURSE_CONTAINERD_BIN]
+          --containerd-request-timeout=                      How long to wait for requests to Containerd to complete. 0 means no timeout. (default: 5m) [$CONCOURSE_CONTAINERD_REQUEST_TIMEOUT]
+          --containerd-dns-server=                           DNS server IP address to use instead of automatically determined servers. Can be specified multiple times. [$CONCOURSE_CONTAINERD_DNS_SERVER]
+          --containerd-restricted-network=                   Network ranges to which traffic from containers will be restricted. Can be specified multiple times. [$CONCOURSE_CONTAINERD_RESTRICTED_NETWORK]
+          --containerd-max-containers=                       Max container capacity. 0 means no limit. (default: 250) [$CONCOURSE_CONTAINERD_MAX_CONTAINERS]
+          --containerd-network-pool=                         Network range to use for dynamically allocated container subnets. (default: 10.80.0.0/16) [$CONCOURSE_CONTAINERD_NETWORK_POOL]
+
+    DNS Proxy Configuration:
+          --containerd-dns-proxy-enable                      Enable proxy DNS server. [$CONCOURSE_CONTAINERD_DNS_PROXY_ENABLE]
+
+    Baggageclaim Configuration:
+          --baggageclaim-log-level=[debug|info|error|fatal]  Minimum level of logs to see. (default: info) [$CONCOURSE_BAGGAGECLAIM_LOG_LEVEL]
+          --baggageclaim-bind-ip=                            IP address on which to listen for API traffic. (default: 127.0.0.1) [$CONCOURSE_BAGGAGECLAIM_BIND_IP]
+          --baggageclaim-bind-port=                          Port on which to listen for API traffic. (default: 7788) [$CONCOURSE_BAGGAGECLAIM_BIND_PORT]
+          --baggageclaim-debug-bind-ip=                      IP address on which to listen for the pprof debugger endpoints. (default: 127.0.0.1) [$CONCOURSE_BAGGAGECLAIM_DEBUG_BIND_IP]
+          --baggageclaim-debug-bind-port=                    Port on which to listen for the pprof debugger endpoints. (default: 7787) [$CONCOURSE_BAGGAGECLAIM_DEBUG_BIND_PORT]
+          --baggageclaim-volumes=                            Directory in which to place volume data. [$CONCOURSE_BAGGAGECLAIM_VOLUMES]
+          --baggageclaim-driver=[detect|naive|btrfs|overlay] Driver to use for managing volumes. (default: detect) [$CONCOURSE_BAGGAGECLAIM_DRIVER]
+          --baggageclaim-btrfs-bin=                          Path to btrfs binary (default: btrfs) [$CONCOURSE_BAGGAGECLAIM_BTRFS_BIN]
+          --baggageclaim-mkfs-bin=                           Path to mkfs.btrfs binary (default: mkfs.btrfs) [$CONCOURSE_BAGGAGECLAIM_MKFS_BIN]
+          --baggageclaim-overlays-dir=                       Path to directory in which to store overlay data [$CONCOURSE_BAGGAGECLAIM_OVERLAYS_DIR]
+          --baggageclaim-disable-user-namespaces             Disable remapping of user/group IDs in unprivileged volumes. [$CONCOURSE_BAGGAGECLAIM_DISABLE_USER_NAMESPACES]
