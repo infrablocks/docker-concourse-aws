@@ -40,6 +40,10 @@ fi
 
 baggageclaim_bind_ip="${CONCOURSE_BAGGAGECLAIM_BIND_IP:-0.0.0.0}"
 
+if [[ "${CONCOURSE_SKIP_GARDEN_DNS_SERVER}" != "yes" ]]; then
+  export CONCOURSE_GARDEN_DNS_SERVER="169.254.169.253"
+fi
+
 retire_worker() {
   /usr/local/concourse/bin/concourse retire-worker --name="${name}"
 }

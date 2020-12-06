@@ -81,6 +81,15 @@ fdescribe 'concourse-worker-aws entrypoint' do
           .to(match(/--baggageclaim-bind-ip=0\.0\.0\.0/))
     end
 
+    it 'uses a garden DNS server of 169.254.169.253' do
+      pid = process('concourse').pid
+      environment_contents =
+          command("tr '\\0' '\\n' < /proc/#{pid}/environ").stdout
+
+      expect(environment_contents)
+          .to(match(/^CONCOURSE_GARDEN_DNS_SERVER=169.254.169.253/))
+    end
+
     it 'runs with the root user' do
       expect(process('concourse').user)
           .to(eq('root'))
@@ -109,7 +118,8 @@ fdescribe 'concourse-worker-aws entrypoint' do
               'CONCOURSE_NAME' => 'worker-1',
               'CONCOURSE_WORK_DIR' => '/work',
               'CONCOURSE_BIND_IP' => '127.0.0.1',
-              'CONCOURSE_BAGGAGECLAIM_BIND_IP' => '127.0.0.1'
+              'CONCOURSE_BAGGAGECLAIM_BIND_IP' => '127.0.0.1',
+              'CONCOURSE_SKIP_GARDEN_DNS_SERVER' => 'yes'
           })
 
       execute_command(
@@ -139,6 +149,15 @@ fdescribe 'concourse-worker-aws entrypoint' do
     it 'uses the provided baggageclaim bind IP' do
       expect(process('concourse').args)
           .to(match(/--baggageclaim-bind-ip=127\.0\.0\.1/))
+    end
+
+    it 'does not set a garden DNS server' do
+      pid = process('concourse').pid
+      environment_contents =
+          command("tr '\\0' '\\n' < /proc/#{pid}/environ").stdout
+
+      expect(environment_contents)
+          .not_to(match(/CONCOURSE_GARDEN_DNS_SERVER/))
     end
   end
 
