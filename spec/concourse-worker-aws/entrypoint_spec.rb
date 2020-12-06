@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe 'concourse-worker-aws entrypoint' do
+fdescribe 'concourse-worker-aws entrypoint' do
   metadata_service_url = 'http://metadata:1338'
   s3_endpoint_url = 'http://s3:4566'
   s3_bucket_region = 'us-east-1'
@@ -24,10 +24,6 @@ describe 'concourse-worker-aws entrypoint' do
       }
   }
 
-  default_env = {
-      'CONCOURSE_WORK_DIR' => '/var/opt/concourse'
-  }
-
   before(:all) do
     set :backend, :docker
     set :env, environment
@@ -46,10 +42,10 @@ describe 'concourse-worker-aws entrypoint' do
           region: s3_bucket_region,
           bucket_path: s3_bucket_path,
           object_path: s3_env_file_object_path,
-          env: default_env.merge(
+          env: {
               'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_PATH' =>
                   '/tsa-worker-private-key',
-          ))
+          })
 
       execute_command(
           "echo \"#{tsa_worker_private_key}\" > /tsa-worker-private-key")
@@ -65,6 +61,26 @@ describe 'concourse-worker-aws entrypoint' do
       expect(process('concourse').args).to(match(/worker/))
     end
 
+    it 'uses the instance ID as the worker name' do
+      expect(process('concourse').args)
+          .to(match(/--name=i-1234567890abcdef0/))
+    end
+
+    it 'uses a work directory of /var/opt/concourse' do
+      expect(process('concourse').args)
+          .to(match(/--work-dir=\/var\/opt\/concourse/))
+    end
+
+    it 'uses a bind IP of 0.0.0.0' do
+      expect(process('concourse').args)
+          .to(match(/--bind-ip=0\.0\.0\.0/))
+    end
+
+    it 'uses a baggageclaim bind IP of 0.0.0.0' do
+      expect(process('concourse').args)
+          .to(match(/--baggageclaim-bind-ip=0\.0\.0\.0/))
+    end
+
     it 'runs with the root user' do
       expect(process('concourse').user)
           .to(eq('root'))
@@ -73,6 +89,56 @@ describe 'concourse-worker-aws entrypoint' do
     it 'runs with the root group' do
       expect(process('concourse').group)
           .to(eq('root'))
+    end
+  end
+
+  describe 'with general configuration' do
+    def tsa_worker_private_key
+      File.read('spec/fixtures/worker-key.private')
+    end
+
+    before(:all) do
+      create_env_file(
+          endpoint_url: s3_endpoint_url,
+          region: s3_bucket_region,
+          bucket_path: s3_bucket_path,
+          object_path: s3_env_file_object_path,
+          env: {
+              'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_PATH' =>
+                  '/tsa-worker-private-key',
+              'CONCOURSE_NAME' => 'worker-1',
+              'CONCOURSE_WORK_DIR' => '/work',
+              'CONCOURSE_BIND_IP' => '127.0.0.1',
+              'CONCOURSE_BAGGAGECLAIM_BIND_IP' => '127.0.0.1'
+          })
+
+      execute_command(
+          "echo \"#{tsa_worker_private_key}\" > /tsa-worker-private-key")
+
+      execute_docker_entrypoint(
+          started_indicator: "guardian.started")
+    end
+
+    after(:all, &:reset_docker_backend)
+
+    it 'uses the provided name' do
+      expect(process('concourse').args)
+          .to(match(/--name=worker-1/))
+    end
+
+    it 'uses the provided work directory' do
+      expect(process('concourse').args)
+          .to(match(/--work-dir=\/work/))
+    end
+
+    it 'uses the provided bind IP' do
+      expect(process('concourse').args)
+          .to(match(/--bind-ip=127\.0\.0\.1/))
+    end
+
+    it 'uses the provided baggageclaim bind IP' do
+      expect(process('concourse').args)
+          .to(match(/--baggageclaim-bind-ip=127\.0\.0\.1/))
     end
   end
 
@@ -90,12 +156,12 @@ describe 'concourse-worker-aws entrypoint' do
             region: s3_bucket_region,
             bucket_path: s3_bucket_path,
             object_path: s3_env_file_object_path,
-            env: default_env.merge(
+            env: {
                 'CONCOURSE_TSA_PUBLIC_KEY_FILE_PATH' =>
                     '/tsa-public-key',
                 'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_PATH' =>
                     '/tsa-worker-private-key'
-            ))
+            })
 
         execute_command(
             "echo \"#{tsa_public_key}\" > /tsa-public-key")
@@ -156,12 +222,12 @@ describe 'concourse-worker-aws entrypoint' do
             region: s3_bucket_region,
             bucket_path: s3_bucket_path,
             object_path: s3_env_file_object_path,
-            env: default_env.merge(
+            env: {
                 'CONCOURSE_TSA_PUBLIC_KEY_FILE_OBJECT_PATH' =>
                     tsa_public_key_object_path,
                 'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_OBJECT_PATH' =>
                     tsa_worker_private_key_object_path
-            ))
+            })
 
         execute_docker_entrypoint(
             started_indicator: "guardian.started")

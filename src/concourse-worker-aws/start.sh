@@ -3,6 +3,11 @@
 [ "$TRACE" = "yes" ] && set -x
 set -e
 
+name="${CONCOURSE_NAME:-${SELF_ID}}"
+
+work_dir="${CONCOURSE_WORK_DIR:-/var/opt/concourse}"
+bind_ip="${CONCOURSE_BIND_IP:-0.0.0.0}"
+
 tsa_worker_private_key_option=
 if [ -n "${CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_OBJECT_PATH}" ]; then
   default_path=/opt/concourse/conf/tsa-worker-private-key
@@ -33,10 +38,23 @@ if [ -n "${CONCOURSE_TSA_PUBLIC_KEY_FILE_PATH}" ]; then
   tsa_public_key_option="--tsa-public-key=${file_path}"
 fi
 
+baggageclaim_bind_ip="${CONCOURSE_BAGGAGECLAIM_BIND_IP:-0.0.0.0}"
+
+retire_worker() {
+  /usr/local/concourse/bin/concourse retire-worker --name="${name}"
+}
+
+trap retire_worker EXIT
+
 # shellcheck disable=SC2086
 exec /opt/concourse/bin/start.sh worker \
+    --name="${name}" \
+    --work-dir="${work_dir}" \
+    --bind-ip="${bind_ip}" \
     \
     ${tsa_public_key_option} \
     ${tsa_worker_private_key_option} \
+    \
+    --baggageclaim-bind-ip="${baggageclaim_bind_ip}" \
     \
     "$@"
