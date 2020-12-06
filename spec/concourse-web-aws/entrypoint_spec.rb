@@ -50,7 +50,7 @@ describe 'concourse-web-aws entrypoint' do
           bucket_path: s3_bucket_path,
           object_path: s3_env_file_object_path,
           env: default_env.merge(
-              'CONCOURSE_TSA_HOST_KEY_FILE_PATH' => '/tsa-host-key'
+              'CONCOURSE_TSA_HOST_KEY' => '/tsa-host-key'
           ))
 
       execute_command(
@@ -78,7 +78,7 @@ describe 'concourse-web-aws entrypoint' do
     end
   end
 
-  describe 'with session signing key configuration' do
+  describe 'with authentication configuration' do
     context 'when passed a filesystem path for the session signing key' do
       before(:all) do
         session_signing_key =
@@ -169,6 +169,134 @@ describe 'concourse-web-aws entrypoint' do
         expect(process('concourse').args)
             .to(match(
                 /--session-signing-key=#{Regexp.escape(key_path)}/))
+      end
+    end
+  end
+
+  describe 'with TSA configuration' do
+    context 'when passed filesystem paths for the host and authorised keys' do
+      before(:all) do
+        tsa_host_key =
+            File.read('spec/fixtures/tsa-host-key.private')
+        tsa_authorized_keys =
+            File.read('spec/fixtures/tsa-authorized-keys')
+
+        create_env_file(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: s3_env_file_object_path,
+            env: default_env.merge(
+                'CONCOURSE_TSA_HOST_KEY_FILE_PATH' =>
+                    '/tsa-host-key',
+                'CONCOURSE_TSA_AUTHORIZED_KEYS_FILE_PATH' =>
+                    '/tsa-authorized-keys'
+            ))
+
+        execute_command(
+            "echo \"#{tsa_host_key}\" > /tsa-host-key")
+        execute_command(
+            "echo \"#{tsa_authorized_keys}\" > /tsa-authorized-keys")
+
+        execute_docker_entrypoint(
+            started_indicator: "atc.listening")
+      end
+
+      after(:all, &:reset_docker_backend)
+
+      it 'uses the provided file path as the TSA host key' do
+        expect(process('concourse').args)
+            .to(match(
+                /--tsa-host-key=\/tsa-host-key/))
+      end
+
+      it 'uses the provided file path as the TSA authorized keys' do
+        expect(process('concourse').args)
+            .to(match(
+                /--tsa-authorized-keys=\/tsa-authorized-keys/))
+      end
+    end
+
+    context 'when passed an object path for the session signing key' do
+      def tsa_host_key
+        File.read('spec/fixtures/tsa-host-key.private')
+      end
+
+      def tsa_authorized_keys
+        File.read('spec/fixtures/tsa-authorized-keys')
+      end
+
+      before(:all) do
+        tsa_host_key_object_path =
+            "#{s3_bucket_path}/tsa-host-key"
+        tsa_authorized_keys_object_path =
+            "#{s3_bucket_path}/tsa-authorized-keys"
+
+        create_object(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: tsa_host_key_object_path,
+            content: tsa_host_key)
+
+        create_object(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: tsa_authorized_keys_object_path,
+            content: tsa_authorized_keys)
+
+        create_env_file(
+            endpoint_url: s3_endpoint_url,
+            region: s3_bucket_region,
+            bucket_path: s3_bucket_path,
+            object_path: s3_env_file_object_path,
+            env: default_env.merge(
+                'CONCOURSE_TSA_HOST_KEY_FILE_OBJECT_PATH' =>
+                    tsa_host_key_object_path,
+                'CONCOURSE_TSA_AUTHORIZED_KEYS_FILE_OBJECT_PATH' =>
+                    tsa_authorized_keys_object_path
+            ))
+
+        execute_docker_entrypoint(
+            started_indicator: "atc.listening")
+      end
+
+      after(:all, &:reset_docker_backend)
+
+      it 'fetches the specified TSA host key and TSA authorized keys' do
+        config_file_listing = command('ls /opt/concourse/conf').stdout
+
+        expect(config_file_listing)
+            .to(eq([
+                "tsa-authorized-keys",
+                "tsa-host-key",
+            ].join("\n") + "\n"))
+
+        tsa_host_key_path = '/opt/concourse/conf/tsa-host-key'
+        tsa_host_key_contents =
+            command("cat #{tsa_host_key_path}").stdout
+
+        tsa_authorized_keys_path = '/opt/concourse/conf/tsa-authorized-keys'
+        tsa_authorized_keys_contents =
+            command("cat #{tsa_authorized_keys_path}").stdout
+
+        expect(tsa_host_key_contents).to(eq(tsa_host_key))
+        expect(tsa_authorized_keys_contents).to(eq(tsa_authorized_keys))
+      end
+
+      it 'uses the fetched TSA host key' do
+        key_path = '/opt/concourse/conf/tsa-host-key'
+        expect(process('concourse').args)
+            .to(match(
+                /--tsa-host-key=#{Regexp.escape(key_path)}/))
+      end
+
+      it 'uses the fetched TSA authorized keys' do
+        key_path = '/opt/concourse/conf/tsa-authorized-keys'
+        expect(process('concourse').args)
+            .to(match(
+                /--tsa-authorized-keys=#{Regexp.escape(key_path)}/))
       end
     end
   end
