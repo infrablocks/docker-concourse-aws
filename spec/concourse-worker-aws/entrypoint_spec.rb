@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-fdescribe 'concourse-worker-aws entrypoint' do
+describe 'concourse-worker-aws entrypoint' do
   metadata_service_url = 'http://metadata:1338'
   s3_endpoint_url = 'http://s3:4566'
   s3_bucket_region = 'us-east-1'

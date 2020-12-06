@@ -67,6 +67,11 @@ describe 'concourse-web-aws entrypoint' do
       expect(process('concourse').args).to(match(/web/))
     end
 
+    it 'uses the self IP as the peer address' do
+      expect(process('concourse').args)
+          .to(match(/--peer-address=172\.16\.34\.43/))
+    end
+
     it 'runs with the root user' do
       expect(process('concourse').user)
           .to(eq('root'))
@@ -75,6 +80,37 @@ describe 'concourse-web-aws entrypoint' do
     it 'runs with the root group' do
       expect(process('concourse').group)
           .to(eq('root'))
+    end
+  end
+
+  describe 'with general configuration' do
+    def tsa_host_key
+      File.read('spec/fixtures/tsa-host-key.private')
+    end
+
+    before(:all) do
+      create_env_file(
+          endpoint_url: s3_endpoint_url,
+          region: s3_bucket_region,
+          bucket_path: s3_bucket_path,
+          object_path: s3_env_file_object_path,
+          env: default_env.merge(
+              'CONCOURSE_TSA_HOST_KEY_FILE_PATH' => '/tsa-host-key',
+              'CONCOURSE_PEER_ADDRESS' => '127.0.0.1'
+          ))
+
+      execute_command(
+          "echo \"#{tsa_host_key}\" > /tsa-host-key")
+
+      execute_docker_entrypoint(
+          started_indicator: "atc.listening")
+    end
+
+    after(:all, &:reset_docker_backend)
+
+    it 'uses the provided peer address' do
+      expect(process('concourse').args)
+          .to(match(/--peer-address=127\.0\.0\.1/))
     end
   end
 

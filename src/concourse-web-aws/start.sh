@@ -3,6 +3,8 @@
 [ "$TRACE" = "yes" ] && set -x
 set -e
 
+peer_address="${CONCOURSE_PEER_ADDRESS:-${SELF_IP}}"
+
 session_signing_key_option=
 if [ -n "${CONCOURSE_SESSION_SIGNING_KEY_FILE_OBJECT_PATH}" ]; then
   default_path=/opt/concourse/conf/session-signing-key
@@ -50,6 +52,7 @@ fi
 
 # shellcheck disable=SC2086
 exec /opt/concourse/bin/start.sh web \
+    --peer-address="${peer_address}" \
     \
     ${session_signing_key_option} \
     \
