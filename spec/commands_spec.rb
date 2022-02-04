@@ -26,8 +26,8 @@ describe 'commands' do
   end
 
   it "includes the AWS CLI" do
-    expect(command('aws --version').stderr)
-        .to(match(/1.19/))
+    expect(command('aws --version').stdout)
+        .to(match(/aws-cli\/1/))
   end
 
   def reset_docker_backend
