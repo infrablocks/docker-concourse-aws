@@ -1,10 +1,9 @@
 FROM concourse/concourse:6.7.2 as concourse
 
-FROM ubuntu:bionic
+FROM ubuntu:focal-20220113
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-    btrfs-tools \
     ca-certificates \
     dumb-init \
     iproute2 \
@@ -22,7 +21,7 @@ STOPSIGNAL SIGUSR2
 
 # Install AWS CLI
 RUN apt-get update \
-    && apt-get -y install python curl unzip \
+    && apt-get -y install python-is-python3 python3-venv curl unzip \
     && cd /tmp \
     && curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip" \
     && unzip awscli-bundle.zip \
