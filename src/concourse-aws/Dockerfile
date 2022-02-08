@@ -1,4 +1,4 @@
-FROM concourse/concourse:6.7.2 as concourse
+FROM concourse/concourse:7.6.0 as concourse
 
 FROM ubuntu:focal-20220113
 
