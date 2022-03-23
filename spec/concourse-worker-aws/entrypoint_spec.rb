@@ -71,7 +71,6 @@ describe 'concourse-worker-aws entrypoint' do
         bucket_path: s3_bucket_path,
         object_path: s3_env_file_object_path,
         env: {
-          'CONCOURSE_SKIP_GARDEN_DNS_SERVER' => 'yes',
           'CONCOURSE_TSA_WORKER_PRIVATE_KEY_FILE_PATH' =>
             tsa_worker_private_key_file_path
         }
