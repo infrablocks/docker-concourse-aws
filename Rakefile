@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rake_docker'
 require 'rake_circle_ci'
 require 'rake_github'
@@ -8,17 +10,19 @@ require 'securerandom'
 require 'yaml'
 require 'git'
 require 'os'
+require 'pathname'
 require 'semantic'
 require 'rspec/core/rake_task'
+require 'rubocop/rake_task'
 
 require_relative 'lib/version'
 
 Docker.options = {
-    read_timeout: 300
+  read_timeout: 300
 }
 
 def repo
-  Git.open('.')
+  Git.open(Pathname.new('.'))
 end
 
 def latest_tag
@@ -28,18 +32,21 @@ def latest_tag
 end
 
 def tmpdir
-  base = (ENV["TMPDIR"] || "/tmp")
-  OS.osx? ? "/private" + base : base
+  base = (ENV['TMPDIR'] || '/tmp')
+  OS.osx? ? "/private#{base}" : base
 end
 
-task :default => :'test:integration'
+task default: %i[
+  test:code:fix
+  test:integration
+]
 
 namespace :encryption do
   namespace :passphrase do
+    desc 'Generate encryption passphrase for CI GPG key'
     task :generate do
-      File.open('config/secrets/ci/encryption.passphrase', 'w') do |f|
-        f.write(SecureRandom.base64(36))
-      end
+      File.write('config/secrets/ci/encryption.passphrase',
+                 SecureRandom.base64(36))
     end
   end
 end
@@ -47,88 +54,93 @@ end
 namespace :keys do
   namespace :deploy do
     RakeSSH.define_key_tasks(
-        path: 'config/secrets/ci/',
-        comment: 'maintainers@infrablocks.io')
+      path: 'config/secrets/ci/',
+      comment: 'maintainers@infrablocks.io'
+    )
   end
 
   namespace :gpg do
     RakeGPG.define_generate_key_task(
-        output_directory: 'config/secrets/ci',
-        name_prefix: 'gpg',
-        owner_name: 'InfraBlocks Maintainers',
-        owner_email: 'maintainers@infrablocks.io',
-        owner_comment: 'docker-concourse-aws CI Key')
+      output_directory: 'config/secrets/ci',
+      name_prefix: 'gpg',
+      owner_name: 'InfraBlocks Maintainers',
+      owner_email: 'maintainers@infrablocks.io',
+      owner_comment: 'docker-concourse-aws CI Key'
+    )
   end
 end
 
 RakeCircleCI.define_project_tasks(
-    namespace: :circle_ci,
-    project_slug: 'github/infrablocks/docker-concourse-aws'
+  namespace: :circle_ci,
+  project_slug: 'github/infrablocks/docker-concourse-aws'
 ) do |t|
   circle_ci_config =
-      YAML.load_file('config/secrets/circle_ci/config.yaml')
+    YAML.load_file('config/secrets/circle_ci/config.yaml')
 
-  t.api_token = circle_ci_config["circle_ci_api_token"]
+  t.api_token = circle_ci_config['circle_ci_api_token']
   t.environment_variables = {
-      ENCRYPTION_PASSPHRASE:
-          File.read('config/secrets/ci/encryption.passphrase')
-              .chomp
+    ENCRYPTION_PASSPHRASE:
+        File.read('config/secrets/ci/encryption.passphrase')
+            .chomp
   }
   t.checkout_keys = []
   t.ssh_keys = [
-      {
-          hostname: "github.com",
-          private_key: File.read('config/secrets/ci/ssh.private')
-      }
+    {
+      hostname: 'github.com',
+      private_key: File.read('config/secrets/ci/ssh.private')
+    }
   ]
 end
 
 RakeGithub.define_repository_tasks(
-    namespace: :github,
-    repository: 'infrablocks/docker-concourse-aws'
+  namespace: :github,
+  repository: 'infrablocks/docker-concourse-aws'
 ) do |t, args|
   github_config =
-      YAML.load_file('config/secrets/github/config.yaml')
+    YAML.load_file('config/secrets/github/config.yaml')
 
-  t.access_token = github_config["github_personal_access_token"]
+  t.access_token = github_config['github_personal_access_token']
   t.deploy_keys = [
-      {
-          title: 'CircleCI',
-          public_key: File.read('config/secrets/ci/ssh.public')
-      }
+    {
+      title: 'CircleCI',
+      public_key: File.read('config/secrets/ci/ssh.public')
+    }
   ]
   t.branch_name = args.branch_name
   t.commit_message = args.commit_message
 end
 
 namespace :pipeline do
-  task :prepare => [
-      :'circle_ci:project:follow',
-      :'circle_ci:env_vars:ensure',
-      :'circle_ci:checkout_keys:ensure',
-      :'circle_ci:ssh_keys:ensure',
-      :'github:deploy_keys:ensure'
+  desc 'Prepare CircleCI Pipeline'
+  task prepare: %i[
+    circle_ci:project:follow
+    circle_ci:env_vars:ensure
+    circle_ci:checkout_keys:ensure
+    circle_ci:ssh_keys:ensure
+    github:deploy_keys:ensure
   ]
 end
 
+# rubocop:disable Metrics/BlockLength
 namespace :images do
   namespace :base do
     RakeDocker.define_image_tasks(
-        image_name: 'concourse-aws'
+      image_name: 'concourse-aws'
     ) do |t|
       t.work_directory = 'build/images'
 
       t.copy_spec = [
-          "src/concourse-aws/Dockerfile",
-          "src/concourse-aws/docker-entrypoint.sh",
-          "src/concourse-aws/start.sh",
+        'src/concourse-aws/Dockerfile',
+        'src/concourse-aws/docker-entrypoint.sh',
+        'src/concourse-aws/start.sh'
       ]
 
       t.repository_name = 'concourse-aws'
       t.repository_url = 'infrablocks/concourse-aws'
 
       t.credentials = YAML.load_file(
-          "config/secrets/dockerhub/credentials.yaml")
+        'config/secrets/dockerhub/credentials.yaml'
+      )
 
       t.platform = 'linux/amd64'
 
@@ -138,26 +150,27 @@ namespace :images do
 
   namespace :web do
     RakeDocker.define_image_tasks(
-        image_name: 'concourse-web-aws',
-        argument_names: [:base_image_version]
+      image_name: 'concourse-web-aws',
+      argument_names: [:base_image_version]
     ) do |t, args|
       args.with_defaults(base_image_version: latest_tag.to_s)
 
       t.work_directory = 'build/images'
 
       t.copy_spec = [
-          "src/concourse-web-aws/Dockerfile",
-          "src/concourse-web-aws/start.sh",
+        'src/concourse-web-aws/Dockerfile',
+        'src/concourse-web-aws/start.sh'
       ]
 
       t.repository_name = 'concourse-web-aws'
       t.repository_url = 'infrablocks/concourse-web-aws'
 
       t.credentials = YAML.load_file(
-          "config/secrets/dockerhub/credentials.yaml")
+        'config/secrets/dockerhub/credentials.yaml'
+      )
 
       t.build_args = {
-          BASE_IMAGE_VERSION: args.base_image_version
+        BASE_IMAGE_VERSION: args.base_image_version
       }
 
       t.platform = 'linux/amd64'
@@ -168,26 +181,27 @@ namespace :images do
 
   namespace :worker do
     RakeDocker.define_image_tasks(
-        image_name: 'concourse-worker-aws',
-        argument_names: [:base_image_version]
+      image_name: 'concourse-worker-aws',
+      argument_names: [:base_image_version]
     ) do |t, args|
       args.with_defaults(base_image_version: latest_tag.to_s)
 
       t.work_directory = 'build/images'
 
       t.copy_spec = [
-          "src/concourse-worker-aws/Dockerfile",
-          "src/concourse-worker-aws/start.sh",
+        'src/concourse-worker-aws/Dockerfile',
+        'src/concourse-worker-aws/start.sh'
       ]
 
       t.repository_name = 'concourse-worker-aws'
       t.repository_url = 'infrablocks/concourse-worker-aws'
 
       t.credentials = YAML.load_file(
-          "config/secrets/dockerhub/credentials.yaml")
+        'config/secrets/dockerhub/credentials.yaml'
+      )
 
       t.build_args = {
-          BASE_IMAGE_VERSION: args.base_image_version
+        BASE_IMAGE_VERSION: args.base_image_version
       }
 
       t.platform = 'linux/amd64'
@@ -196,43 +210,45 @@ namespace :images do
     end
   end
 
-  desc "Build all images"
+  desc 'Build all images'
   task :build do
     [
-        'images:base',
-        'images:web',
-        'images:worker',
+      'images:base',
+      'images:web',
+      'images:worker'
     ].each do |t|
       Rake::Task["#{t}:build"].invoke('latest')
       Rake::Task["#{t}:tag"].invoke('latest')
     end
   end
 end
+# rubocop:enable Metrics/BlockLength
 
+# rubocop:disable Metrics/BlockLength
 namespace :dependencies do
   namespace :test do
-    desc "Provision spec dependencies"
+    desc 'Provision spec dependencies'
     task :provision do
-      project_name = "docker_concourse_aws_test"
-      compose_file = "spec/dependencies.yml"
+      project_name = 'docker_concourse_aws_test'
+      compose_file = 'spec/dependencies.yml'
 
       project_name_switch = "--project-name #{project_name}"
       compose_file_switch = "--file #{compose_file}"
-      detach_switch = "--detach"
-      remove_orphans_switch = "--remove-orphans"
+      detach_switch = '--detach'
+      remove_orphans_switch = '--remove-orphans'
 
       command_switches = "#{compose_file_switch} #{project_name_switch}"
       subcommand_switches = "#{detach_switch} #{remove_orphans_switch}"
 
       sh({
-          "TMPDIR" => tmpdir,
-      }, "docker-compose #{command_switches} up #{subcommand_switches}")
+           'TMPDIR' => tmpdir
+         }, "docker-compose #{command_switches} up #{subcommand_switches}")
     end
 
-    desc "Destroy spec dependencies"
+    desc 'Destroy spec dependencies'
     task :destroy do
-      project_name = "docker_concourse_aws_test"
-      compose_file = "spec/dependencies.yml"
+      project_name = 'docker_concourse_aws_test'
+      compose_file = 'spec/dependencies.yml'
 
       project_name_switch = "--project-name #{project_name}"
       compose_file_switch = "--file #{compose_file}"
@@ -240,51 +256,63 @@ namespace :dependencies do
       command_switches = "#{compose_file_switch} #{project_name_switch}"
 
       sh({
-          "TMPDIR" => tmpdir,
-      }, "docker-compose #{command_switches} down")
+           'TMPDIR' => tmpdir
+         }, "docker-compose #{command_switches} down")
     end
   end
 end
+# rubocop:enable Metrics/BlockLength
 
 namespace :fixtures do
   RakeSSH.define_key_tasks(
-      namespace: :session_signing_key,
-      path: 'spec/fixtures/',
-      name_prefix: 'session-signing-key',
-      comment: 'maintainers@infrablocks.io'
+    namespace: :session_signing_key,
+    path: 'spec/fixtures/',
+    name_prefix: 'session-signing-key',
+    comment: 'maintainers@infrablocks.io'
   )
 
   RakeSSH.define_key_tasks(
-      namespace: :tsa_host_key,
-      path: 'spec/fixtures/',
-      name_prefix: 'tsa-host-key',
-      comment: 'maintainers@infrablocks.io'
+    namespace: :tsa_host_key,
+    path: 'spec/fixtures/',
+    name_prefix: 'tsa-host-key',
+    comment: 'maintainers@infrablocks.io'
   )
 
   RakeSSH.define_key_tasks(
-      namespace: :tsa_worker_private_key,
-      path: 'spec/fixtures/',
-      name_prefix: 'worker-key',
-      comment: 'maintainers@infrablocks.io'
+    namespace: :tsa_worker_private_key,
+    path: 'spec/fixtures/',
+    name_prefix: 'worker-key',
+    comment: 'maintainers@infrablocks.io'
   )
 end
 
+RuboCop::RakeTask.new
+
 namespace :test do
-  RSpec::Core::RakeTask.new(:integration => [
-      'images:build',
-      'dependencies:test:provision'
-  ]) do |t|
-    t.rspec_opts = ["--format", "documentation"]
+  namespace :code do
+    desc 'Run all checks on the test code'
+    task check: [:rubocop]
+
+    desc 'Attempt to automatically fix issues with the test code'
+    task fix: [:'rubocop:auto_correct']
+  end
+
+  RSpec::Core::RakeTask.new(
+    integration: %w[images:build dependencies:test:provision]
+  ) do |t|
+    t.rspec_opts = %w[--format documentation]
   end
 end
 
 namespace :version do
+  desc 'Bump version for specified type (pre, major, minor, patch)'
   task :bump, [:type] do |_, args|
     next_tag = latest_tag.send("#{args.type}!")
     repo.add_tag(next_tag.to_s)
     repo.push('origin', 'main', tags: true)
   end
 
+  desc 'Release gem'
   task :release do
     next_tag = latest_tag.release!
     repo.add_tag(next_tag.to_s)
