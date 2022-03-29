@@ -18,7 +18,7 @@ describe 'commands' do
 
   it 'includes the concourse command' do
     expect(command('/opt/concourse/bin/concourse --version').stdout)
-      .to(match(/7.7.0/))
+      .to(match(/7.7.1/))
   end
 
   %w[bash curl dumb-init].each do |apk|
