@@ -1,6 +1,6 @@
 FROM concourse/concourse:7.7.1 as concourse
 
-FROM ubuntu:focal-20220316
+FROM ubuntu:focal-20220415
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
