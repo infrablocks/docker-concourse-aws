@@ -490,6 +490,8 @@ describe 'concourse-web-aws entrypoint' do
   rescue Octopoller::TimeoutError => e
     puts command("cat #{file}").stdout
     raise e
+  rescue Excon::Error::NotFound => _e
+    puts 'Container stopped before expected output present.'
   end
 
   def execute_docker_entrypoint(opts)

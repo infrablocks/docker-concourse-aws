@@ -79,7 +79,7 @@ describe 'concourse-worker-aws entrypoint' do
       write_file(tsa_worker_private_key, tsa_worker_private_key_file_path)
 
       execute_docker_entrypoint(
-        started_indicator: 'guardian.started'
+        started_indicator: 'baggageclaim.listening'
       )
     end
 
@@ -162,7 +162,7 @@ describe 'concourse-worker-aws entrypoint' do
       write_file(tsa_worker_private_key, tsa_worker_private_key_file_path)
 
       execute_docker_entrypoint(
-        started_indicator: 'guardian.started'
+        started_indicator: 'baggageclaim.listening'
       )
     end
 
@@ -235,7 +235,7 @@ describe 'concourse-worker-aws entrypoint' do
         write_file(tsa_worker_private_key, tsa_worker_private_key_file_path)
 
         execute_docker_entrypoint(
-          started_indicator: 'guardian.started'
+          started_indicator: 'baggageclaim.listening'
         )
       end
 
@@ -306,7 +306,7 @@ describe 'concourse-worker-aws entrypoint' do
         )
 
         execute_docker_entrypoint(
-          started_indicator: 'guardian.started'
+          started_indicator: 'baggageclaim.listening'
         )
       end
 

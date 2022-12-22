@@ -129,10 +129,10 @@ namespace :images do
     ) do |t|
       t.work_directory = 'build/images'
 
-      t.copy_spec = [
-        'src/concourse-aws/Dockerfile',
-        'src/concourse-aws/docker-entrypoint.sh',
-        'src/concourse-aws/start.sh'
+      t.copy_spec = %w[
+        src/concourse-aws/Dockerfile
+        src/concourse-aws/docker-entrypoint.sh
+        src/concourse-aws/start.sh
       ]
 
       t.repository_name = 'concourse-aws'
@@ -157,9 +157,9 @@ namespace :images do
 
       t.work_directory = 'build/images'
 
-      t.copy_spec = [
-        'src/concourse-web-aws/Dockerfile',
-        'src/concourse-web-aws/start.sh'
+      t.copy_spec = %w[
+        src/concourse-web-aws/Dockerfile
+        src/concourse-web-aws/start.sh
       ]
 
       t.repository_name = 'concourse-web-aws'
@@ -188,9 +188,9 @@ namespace :images do
 
       t.work_directory = 'build/images'
 
-      t.copy_spec = [
-        'src/concourse-worker-aws/Dockerfile',
-        'src/concourse-worker-aws/start.sh'
+      t.copy_spec = %w[
+        src/concourse-worker-aws/Dockerfile
+        src/concourse-worker-aws/start.sh
       ]
 
       t.repository_name = 'concourse-worker-aws'
@@ -212,11 +212,7 @@ namespace :images do
 
   desc 'Build all images'
   task :build do
-    [
-      'images:base',
-      'images:web',
-      'images:worker'
-    ].each do |t|
+    %w[images:base images:web images:worker].each do |t|
       Rake::Task["#{t}:build"].invoke('latest')
       Rake::Task["#{t}:tag"].invoke('latest')
     end
@@ -294,7 +290,7 @@ namespace :test do
     task check: [:rubocop]
 
     desc 'Attempt to automatically fix issues with the test code'
-    task fix: [:'rubocop:auto_correct']
+    task fix: [:'rubocop:autocorrect_all']
   end
 
   RSpec::Core::RakeTask.new(
