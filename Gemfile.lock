@@ -1610,7 +1610,7 @@ GEM
       net-ssh (>= 2.6.5, < 8.0.0)
     net-ssh (7.2.3)
     net-telnet (0.2.0)
-    nokogiri (1.16.8)
+    nokogiri (1.17.0)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
     octokit (8.1.0)
